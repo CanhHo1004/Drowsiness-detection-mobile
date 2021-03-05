@@ -4,24 +4,14 @@ from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.textinput import TextInput
 
-from scipy.spatial import distance as dist
-from imutils.video import VideoStream
-from imutils import face_utils
-import imutils
 import playsound
-import time
 from threading import Thread
-import dlib
 import cv2
 
 class MainApp(App):
     def build(self):
         layout = GridLayout(cols=2)
         inlayout = GridLayout(rows=2)
-        self.thresh_label = Label(text='Threshold: ')
-        inlayout.add_widget(self.thresh_label)
-        self.thresh = TextInput(text='0.25')
-        inlayout.add_widget(self.thresh)
 
         self.frame_label = Label(text='Frames: ')
         inlayout.add_widget(self.frame_label)
@@ -35,142 +25,76 @@ class MainApp(App):
 
     def onStream(self, obj):
 
-        # Cau hinh duong dan
+        face_cascade = cv2.CascadeClassifier('./haar_cascade/haarcascade_frontalface_default.xml')
+        eye_cascade = cv2.CascadeClassifier('./haar_cascade/haarcascade_eye_tree_eyeglasses.xml')
+
         wav_path = "./alarm.wav"
 
-        # Ham phat ra am thanh
-        def play_sound(wav_path):
+        def sound_alarm(wav_path):
             playsound.playsound(wav_path)
 
-        # ham tinh toan ty le co cua mat
-        def eye_aspect_ratio(eye):
-            # tinh toan khoang cach euclid giua 2 tap hop
-            # diem moc mat thang dung toa do (x,y)
-            A = dist.euclidean(eye[1], eye[5])
-            B = dist.euclidean(eye[2], eye[4])
-
-            # tinh toan khoang cach euclid giua phuong ngang
-            # moc mat toa do (x,y)
-            C = dist.euclidean(eye[0], eye[3])
-
-            # tien hanh tinh toan
-            ear = (A + B) / (2.0 * C)
-
-            return ear
-
-        COUNTER = 0  # bien dem khi do gian no doi mat nho hon EYE_AR_THRESH
-        ALARM_ON = False  # mac dinh alarm khong duoc kich hoat
-
-        # khoi tao facial landmark detector
-        print("[INFO] loading facial landmark predictor...")
-        detector = dlib.get_frontal_face_detector()
-        predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-
-        # lay chi so tren khuon mat cua mat trai va mat phai
-        (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-        (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-
-        EYE_AR_THRESH = float(self.thresh.text)
+        # Variable store execution state
+        ALARM_ON = False
+        COUNTER = 0
 
         EYE_AR_CONSEC_FRAMES = int(self.frames.text)
 
-        # Doc tu camera
-        print("[INFO] starting video stream thread...")
-        try:
-            vs = VideoStream(src=0).start()
-        except:
-            vs = VideoStream(src=1).start()
+        # Starting the video capture
+        cap = cv2.VideoCapture(0)
+        ret, img = cap.read()
 
-        time.sleep(1.0)
+        while (ret):
+            ret, img = cap.read()
+            # Coverting the recorded image to grayscale
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            # Applying filter to remove impurities
+            gray = cv2.bilateralFilter(gray, 5, 1, 1)
 
-        # cho vong lap de lay hinh anh
-        while True:
-            # lay khung hinh tu luong video truc tiep, thay doi kich thuoc va chuyen doi thanh mau xam
-            frame = vs.read()
-            frame = imutils.resize(frame, width=480)
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            # Detecting the face for region of image to be fed to eye classifier
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5, minSize=(150, 150))
+            if (len(faces) > 0):
+                for (x, y, w, h) in faces:
+                    img = cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            # phat hien guong mat tren khung xam
-            rects = detector(gray, 0)
+                    # roi_face is face which is input to eye classifier
+                    roi_face = gray[y:y + h, x:x + w]
+                    roi_face_clr = img[y:y + h, x:x + w]
+                    eyes = eye_cascade.detectMultiScale(roi_face, 1.3, 5, minSize=(40, 40))
+                    # Examining the length of eyes object for eyes
+                    if (len(eyes) != None):
+                        cv2.putText(img, "Eyes detected", (50, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+                        if (len(eyes) < 1):
+                            COUNTER += 1
+                            cv2.putText(img, "Count: " + str(COUNTER), (450, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+                            if COUNTER >= EYE_AR_CONSEC_FRAMES:
+                                if not ALARM_ON:
+                                    ALARM_ON = True
 
-            maxBoundingBox = -1
-            maxId = -1
-            for (i, rect) in enumerate(rects):
-                shape = predictor(gray, rect)
-                shape = face_utils.shape_to_np(shape)
-                # convert dlib's rectangle to a OpenCV-style bounding box
-                # [i.e., (x, y, w, h)], then draw the face bounding box
-                (x, y, w, h) = face_utils.rect_to_bb(rect)
-                total = (w + h) / 2
-                if total > maxBoundingBox:
-                    maxBoundingBox = total
-                    maxId = i
+                                    if wav_path != "":
+                                        t = Thread(target=sound_alarm,
+                                                   args=(wav_path,))
+                                        t.daemon = True
+                                        t.start()
 
-            for (i, rect) in enumerate(rects):
-                if i == maxId:
-                    shape = predictor(gray, rect)
-                    shape = face_utils.shape_to_np(shape)
-                    # convert dlib's rectangle to a OpenCV-style bounding box
-                    # [i.e., (x, y, w, h)], then draw the face bounding box
-                    (x, y, w, h) = face_utils.rect_to_bb(rect)
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-                    # trich xuat toa do cua mat trai va mat phai, tu do su dung cac toa do nay de tinh toan do gian no cua mat
-                    leftEye = shape[lStart:lEnd]
-                    rightEye = shape[rStart:rEnd]
-                    leftEAR = eye_aspect_ratio(leftEye)
-                    rightEAR = eye_aspect_ratio(rightEye)
-
-                    # tinh trung binh do gian no cua doi mat
-                    ear = (leftEAR + rightEAR) / 2.0
-
-                    # tinh do loi lom cua mat trai va mat phai, sau do truc quan hoa tung mat
-                    leftEyeHull = cv2.convexHull(leftEye)
-                    rightEyeHull = cv2.convexHull(rightEye)
-                    cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
-                    cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
-
-                    # neu do gian no mat duoi vung xac dinh  thi bien dem bat dau tang
-                    if ear < EYE_AR_THRESH:
-                        COUNTER += 1
-
-                        # neu mat nham den so luong frame nhat dinh thi alarm duoc kich hoat
-                        if COUNTER >= EYE_AR_CONSEC_FRAMES:
-                            if not ALARM_ON:
-                                ALARM_ON = True
-
-                                if wav_path != "":
-                                    t = Thread(target=play_sound,
-                                               args=(wav_path,))
-                                    t.daemon = True
-                                    t.start()
-
-                            # hien thi noi dung canh bao
-                            cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-                        if COUNTER % 90 == 0:
+                                cv2.putText(img, "DROWSINESS ALERT!", (10, 30),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                        else:
+                            COUNTER = 0
                             ALARM_ON = False
+            else:
+                cv2.putText(img,
+                            "No face detected", (100, 100),
+                            cv2.FONT_HERSHEY_PLAIN, 3,
+                            (0, 255, 0), 2)
 
-                    else:
-                        COUNTER = 0
-                        ALARM_ON = False
-
-                    # hien thi do gian no cua mat theo tg thuc
-                    cv2.putText(frame, "EAR: {:.2f}".format(
-                        ear), (300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-            # hien thi hinh anh
-            cv2.imshow("Driver Drowsiness Detection Video Stream", frame)
-            key = cv2.waitKey(1) & 0xFF
-
-            # quit with q key
-            if key == ord("q"):
+                # Controlling the algorithm with keys
+            cv2.imshow('img', img)
+            a = cv2.waitKey(1)
+            if (a == ord('q')):
                 break
 
-        # clean up after quit
+        cap.release()
         cv2.destroyAllWindows()
-        vs.stop()
 
 
 if __name__ == "__main__":
