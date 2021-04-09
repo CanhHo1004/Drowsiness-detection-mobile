@@ -3,6 +3,7 @@ import cv2
 import time
 import imutils
 from threading import Thread
+import led
 
 
 # Initializing the face and eye cascade classifiers from xml files
@@ -51,6 +52,7 @@ while (ret):
         if NUM_FRAMES == 2: # Bao hieu he thong da nhan duoc guong mat
             if detect_path != "":
                 playSound(detect_path)
+            led
         
         for (i, rect) in enumerate(faces):
             (x, y, w, h) = rect
@@ -99,7 +101,7 @@ while (ret):
         if FRAMES_NOT_DETECT == 1.0: # Bao hieu he thong chua nhan duoc guong mat
             if not_detect_path != "":
                 playSound(not_detect_path)
-                
+            led
         COUNTER = 0
         NUM_FRAMES = 0
         FRAMES_NOT_DETECT += 0.5 # Cong 0.5 de tranh tinh trang overload khi cong so int
