@@ -7,6 +7,7 @@ GPIO.setup(8, GPIO.OUT, initial=GPIO.LOW)
 try:
     GPIO.output(8, GPIO.HIGH)
     print('output is high')
+    sleep(1)
     GPIO.output(8, GPIO.LOW)
     print('output is low')
 except:
