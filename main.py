@@ -52,7 +52,7 @@ while (ret):
         if NUM_FRAMES == 2: # Bao hieu he thong da nhan duoc guong mat
             if detect_path != "":
                 playSound(detect_path)
-            led
+            led.on()
         
         for (i, rect) in enumerate(faces):
             (x, y, w, h) = rect
@@ -82,18 +82,22 @@ while (ret):
 
                                     if wav_path != "":
                                         playSound(wav_path)
+                                    # led.blink(0)
 
-                                cv2.putText(img, "Ban dang ngu gat!", (10, 30),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                                # cv2.putText(img, "Ban dang ngu gat!", (10, 30),
+                                           # cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
                             else:
-                                cv2.putText(img,"Count: %d" %COUNTER, (10, 30),
-                                            cv2.FONT_HERSHEY_PLAIN, 2,(0, 0, 255), 2)
+                                # led.blink(1)
+                                led.on()
+                                # cv2.putText(img,"Count: %d" %COUNTER, (10, 30),
+                                            # cv2.FONT_HERSHEY_PLAIN, 2,(0, 0, 255), 2)
                             
                             if COUNTER != 0 and COUNTER % 5 == 0:
                                 ALARM_ON = False
                         else:
                             COUNTER = 0
                             ALARM_ON = False
+                            
                            
         FRAMES_NOT_DETECT = 0
         NUM_FRAMES += 1
@@ -101,16 +105,14 @@ while (ret):
         if FRAMES_NOT_DETECT == 1.0: # Bao hieu he thong chua nhan duoc guong mat
             if not_detect_path != "":
                 playSound(not_detect_path)
-            led
+            led.off()
         COUNTER = 0
         NUM_FRAMES = 0
         FRAMES_NOT_DETECT += 0.5 # Cong 0.5 de tranh tinh trang overload khi cong so int
         ALARM_ON = False
         
-        cv2.putText(img,
-                    "No face detected", (10, 30),
-                    cv2.FONT_HERSHEY_PLAIN, 2,
-                    (255, 0, 0), 2)
+        # cv2.putText(img,"No face detected", (10, 30),
+                    # cv2.FONT_HERSHEY_PLAIN, 2,(255, 0, 0), 2)
 
     cv2.imshow('Screen', img)
     key = cv2.waitKey(1) & 0xFF
@@ -118,4 +120,4 @@ while (ret):
         break
 
 cap.release()
-cv2.destroyAllWindows() 
+cv2.destroyAllWindows()
