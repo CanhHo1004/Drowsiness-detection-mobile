@@ -1,4 +1,4 @@
-import playsound
+import os
 import cv2
 import time
 import imutils
@@ -10,15 +10,15 @@ import led
 face_cascade = cv2.CascadeClassifier('./haar_cascade/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('./haar_cascade/haarcascade_eye_tree_eyeglasses.xml')
 
-wav_path = "./audio/alarm.wav"
-detect_path = "./audio/detect.mp3"
-not_detect_path = "./audio/not_detect.mp3"
+wav_path = "/home/pi/pi-reboot/audio/alarm.wav"
+# detect_path = "./audio/detect.mp3"
+# not_detect_path = "./audio/not_detect.mp3"
 
 def sound_alarm(path):
-    playsound.playsound(path)
+    os.system('aplay ' + path)
 
 def playSound(path):
-    t = Thread(target=sound_alarm, args=(path,), daemon=True)
+    t = Thread(target=sound_alarm, args=(wav_path,), daemon=True)
     t.start()
 
 # Variable store execution state
@@ -50,8 +50,8 @@ while (ret):
     
     if (len(faces) > 0):
         if NUM_FRAMES == 2: # Bao hieu he thong da nhan duoc guong mat
-            if detect_path != "":
-                playSound(detect_path)
+            # if detect_path != "":
+                # playSound(detect_path)
             led.on()
         
         for (i, rect) in enumerate(faces):
@@ -68,10 +68,10 @@ while (ret):
 
                 # roi_face is face which is input to eye classifier
                 roi_face = gray[y:y + h, x:x + w]
-                roi_face_clr = img[y:y + h, x:x + w]
+                # roi_face_clr = img[y:y + h, x:x + w]
                 eyes = eye_cascade.detectMultiScale(roi_face, 1.3, 5, minSize=(20, 20))
                 
-                if NUM_FRAMES % 5 == 0:  # He thong xu ly moi 5 frame
+                if NUM_FRAMES % 4 == 0:  # He thong xu ly moi 5 frame
                     if (len(eyes) != None):
                         if(len(eyes) < 1):
                             COUNTER += 1
@@ -92,7 +92,7 @@ while (ret):
                                 # cv2.putText(img,"Count: %d" %COUNTER, (10, 30),
                                             # cv2.FONT_HERSHEY_PLAIN, 2,(0, 0, 255), 2)
                             
-                            if COUNTER != 0 and COUNTER % 5 == 0:
+                            if COUNTER != 0 and COUNTER % 7 == 0:
                                 ALARM_ON = False
                         else:
                             COUNTER = 0
@@ -103,8 +103,8 @@ while (ret):
         NUM_FRAMES += 1
     else:
         if FRAMES_NOT_DETECT == 1.0: # Bao hieu he thong chua nhan duoc guong mat
-            if not_detect_path != "":
-                playSound(not_detect_path)
+            # if not_detect_path != "":
+                # playSound(not_detect_path)
             led.off()
         COUNTER = 0
         NUM_FRAMES = 0
