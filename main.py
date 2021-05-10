@@ -3,23 +3,39 @@ import cv2
 import time
 import imutils
 from threading import Thread
-import led
+import RPi.GPIO as GPIO
 
 
 # Initializing the face and eye cascade classifiers from xml files
 face_cascade = cv2.CascadeClassifier('./haar_cascade/haarcascade_frontalface_default.xml')
 eye_cascade = cv2.CascadeClassifier('./haar_cascade/haarcascade_eye_tree_eyeglasses.xml')
 
-wav_path = "/home/pi/pi-reboot/audio/alarm.wav"
+# wav_path = "/home/pi/Desktop/Drowsiness-Detect-Application/audio/alarm.wav"
 # detect_path = "./audio/detect.mp3"
 # not_detect_path = "./audio/not_detect.mp3"
 
-def sound_alarm(path):
-    os.system('aplay ' + path)
+# def sound_alarm(path):
+#     os.system('aplay ' + path)
 
-def playSound(path):
-    t = Thread(target=sound_alarm, args=(wav_path,), daemon=True)
+def sound_alarm(flag):
+    GPIO.setwarnings(False) # Ignore warning for now
+    GPIO.setmode(GPIO.BOARD) # Use physical pin numbering
+    GPIO.setup(18, GPIO.OUT, initial=GPIO.LOW)
+    if flag == 1:
+        while True:
+            GPIO.output(18, GPIO.HIGH)
+            time.sleep(0.1)
+            GPIO.output(18, GPIO.LOW)
+            time.sleep(0.1)
+    else:
+        GPIO.output(18, GPIO.LOW)
+        GPIO.cleanup()
+
+
+def playSound(flag):
+    t = Thread(target=sound_alarm, args=(flag,), daemon=True)
     t.start()
+    
 
 # Variable store execution state
 ALARM_ON = False
@@ -49,10 +65,6 @@ while (ret):
     maxId = -1
     
     if (len(faces) > 0):
-        if NUM_FRAMES == 2: # Bao hieu he thong da nhan duoc guong mat
-            # if detect_path != "":
-                # playSound(detect_path)
-            led.on()
         
         for (i, rect) in enumerate(faces):
             (x, y, w, h) = rect
@@ -71,7 +83,7 @@ while (ret):
                 # roi_face_clr = img[y:y + h, x:x + w]
                 eyes = eye_cascade.detectMultiScale(roi_face, 1.3, 5, minSize=(20, 20))
                 
-                if NUM_FRAMES % 4 == 0:  # He thong xu ly moi 5 frame
+                if NUM_FRAMES % 5 == 0:  # He thong xu ly moi 5 frame
                     if (len(eyes) != None):
                         if(len(eyes) < 1):
                             COUNTER += 1
@@ -79,40 +91,33 @@ while (ret):
                             if COUNTER >= EYE_AR_CONSEC_FRAMES:
                                 if not ALARM_ON:
                                     ALARM_ON = True
-
-                                    if wav_path != "":
-                                        playSound(wav_path)
-                                    # led.blink(0)
+                                    # if wav_path != "":
+                                     #    playSound(wav_path)
+                                    playSound(1)
 
                                 # cv2.putText(img, "Ban dang ngu gat!", (10, 30),
                                            # cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-                            else:
-                                # led.blink(1)
-                                led.on()
+                            # else:
                                 # cv2.putText(img,"Count: %d" %COUNTER, (10, 30),
                                             # cv2.FONT_HERSHEY_PLAIN, 2,(0, 0, 255), 2)
-                            
-                            if COUNTER != 0 and COUNTER % 7 == 0:
-                                ALARM_ON = False
                         else:
                             COUNTER = 0
                             ALARM_ON = False
+                            playSound(0)
                             
                            
         FRAMES_NOT_DETECT = 0
         NUM_FRAMES += 1
     else:
-        if FRAMES_NOT_DETECT == 1.0: # Bao hieu he thong chua nhan duoc guong mat
-            # if not_detect_path != "":
-                # playSound(not_detect_path)
-            led.off()
+        
         COUNTER = 0
         NUM_FRAMES = 0
         FRAMES_NOT_DETECT += 0.5 # Cong 0.5 de tranh tinh trang overload khi cong so int
         ALARM_ON = False
-        
+        playSound(0)
         # cv2.putText(img,"No face detected", (10, 30),
                     # cv2.FONT_HERSHEY_PLAIN, 2,(255, 0, 0), 2)
+    
 
     cv2.imshow('Screen', img)
     key = cv2.waitKey(1) & 0xFF
