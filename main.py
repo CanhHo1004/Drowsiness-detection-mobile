@@ -27,6 +27,10 @@ def sound_alarm(flag):
             time.sleep(0.1)
             GPIO.output(18, GPIO.LOW)
             time.sleep(0.1)
+    elif flag == 2:
+        GPIO.output(18, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(18, GPIO.LOW)
     else:
         GPIO.output(18, GPIO.LOW)
         GPIO.cleanup()
@@ -35,7 +39,7 @@ def sound_alarm(flag):
 def playSound(flag):
     t = Thread(target=sound_alarm, args=(flag,), daemon=True)
     t.start()
-    
+
 
 # Variable store execution state
 ALARM_ON = False
@@ -65,7 +69,12 @@ while (ret):
     maxId = -1
     
     if (len(faces) > 0):
-        
+        if NUM_FRAMES == 2:
+            playSound(2)
+            time.sleep(0.5)
+            playSound(2)
+            time.sleep(0.5)
+            
         for (i, rect) in enumerate(faces):
             (x, y, w, h) = rect
             region = (w + h)/2
@@ -109,12 +118,11 @@ while (ret):
         FRAMES_NOT_DETECT = 0
         NUM_FRAMES += 1
     else:
-        
+        playSound(0)
         COUNTER = 0
         NUM_FRAMES = 0
         FRAMES_NOT_DETECT += 0.5 # Cong 0.5 de tranh tinh trang overload khi cong so int
         ALARM_ON = False
-        playSound(0)
         # cv2.putText(img,"No face detected", (10, 30),
                     # cv2.FONT_HERSHEY_PLAIN, 2,(255, 0, 0), 2)
     
